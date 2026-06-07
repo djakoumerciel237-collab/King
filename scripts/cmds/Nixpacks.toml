@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ['ffmpeg']
+
+[phases.install]
+cmds = ['npm install']
+
+[phases.build]
+cmds = ['npm run build || echo "no build"']
+
+[start]
+cmd = 'node index.js'
