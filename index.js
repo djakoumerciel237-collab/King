@@ -10,12 +10,12 @@
  * Thank you for using
  *
  * Vietnamese:
- *! Vui lòng không thay đổi mã bên dưới, nó rất quan trọng cho dự án.
+ *! Vui lòng không thay đổi mã bên dưới, nó rất quan trọng đối với dự án.
  * Nó là động lực để tôi duy trì và phát triển dự án miễn phí.
  *! Nếu thay đổi nó, bạn sẽ bị cấm vĩnh viễn
  * Cảm ơn bạn đã sử dụng */
 
-// Fix Node 16/18 pour ytdl-core Facebook
+// Fix Node 18 pour ytdl-core Facebook + FCA
 const { File, Blob } = require('buffer')
 global.File = File
 global.Blob = Blob
@@ -31,6 +31,14 @@ const log = require("./logger/log.js");
 const app = express();
 const server = http.createServer(app);
 const port = process.env.PORT || 3000;
+
+// Keep-Alive pour Railway
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('GoatBot is alive - Status: OK');
+}).listen(port, () => {
+  console.log(`📡 Web server running on port ${port}`);
+});
 
 // Ensure log storage
 if (!fs.existsSync("./cache")) fs.mkdirSync("./cache");
@@ -67,14 +75,11 @@ app.get("/logs", (req, res) => {
 body { font-family: monospace; background: #000; color: #0f0; padding: 10px; }
 #log { height: 80vh; overflow-y: scroll; white-space: pre-wrap; border: 1px solid #444; padding: 10px; margin-bottom: 10px; }
 .error { color: red; }
-button { background: #111; color: #0f0; border: 1px solid #0f0; padding: 5px 10px; margin-right: 5px; cursor: pointer; }
 </style>
 </head>
 <body>
 <h2>📜 King Logs Realtime</h2>
 <div id="log">Loading...</div>
-<button onclick="copyLogs()">📋 Copy</button>
-<a href="/logs.txt" download><button>📥 Download</button></a>
 <script>
 const log = document.getElementById("log");
 fetch("/logs.txt").then(r => r.text()).then(t => { log.innerHTML = colorize(t); log.scrollTop = log.scrollHeight; });
@@ -83,7 +88,6 @@ ws.onmessage = e => { log.innerHTML += "<br>" + colorize(e.data); log.scrollTop 
 function colorize(text) {
   return text.replace(/\\n/g, "<br>").replace(/\\[.*?ERROR.*?\\]/gi, match => \`<span class="error">\${match}</span>\`);
 }
-function copyLogs() { const temp = document.createElement("textarea"); temp.value = log.textContent; document.body.appendChild(temp); temp.select(); document.execCommand("copy"); document.body.removeChild(temp); alert("Copied!"); }
 </script>
 </body>
 </html>
@@ -92,36 +96,40 @@ function copyLogs() { const temp = document.createElement("textarea"); temp.valu
 
 app.use("/logs.txt", express.static(logPath));
 
-// Keep-Alive server
-http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('King is alive - Status: OK');
-}).listen(port, () => {
-  console.log(`📡 King web server running on port ${port}`);
-});
-
-// Start Goat.js
+// Start Goat.js avec debug complet
 function startProject() {
-  console.log("[DEBUG] Starting King Bot...");
+  console.log("[DEBUG] === KING BOT STARTING ===");
+  console.log("[DEBUG] Node version:", process.version);
+  console.log("[DEBUG] CWD:", __dirname);
+  console.log("[DEBUG] Goat.js exists:", fs.existsSync(path.join(__dirname, "Goat.js")));
+
   const child = spawn("node", ["Goat.js"], {
     cwd: __dirname,
     stdio: ['inherit', 'pipe', 'pipe']
   });
 
   child.stdout.on("data", (data) => {
-    console.log("[King]", data.toString().trim());
+    const msg = data.toString().trim();
+    if (msg) console.log("[King]", msg);
   });
 
   child.stderr.on("data", (data) => {
-    console.log("[ERROR]", data.toString().trim());
+    const err = data.toString().trim();
+    if (err) console.log("[King ERROR]", err);
   });
 
   child.on("close", (code) => {
     console.log(`[Goat.js] Exited with code ${code}`);
-    if (code!== 0) {
-      log.info("Restarting King in 3s...");
-      setTimeout(startProject, 3000);
+    if (code!== 0 && code!== null) {
+      console.log("Restarting King in 5 seconds...");
+      setTimeout(startProject, 5000);
     }
   });
+
+  child.on("error", (err) => {
+    console.log("[FATAL] Failed to start Goat.js:", err.message);
+  });
 }
-startProject();
+
+// Delay 2s pour laisser le serveur web démarrer
+setTimeout(startProject, 2000);
