@@ -1,21 +1,24 @@
-/** 
- * @author NTKhang 
+/** * @author NTKhang
  * ! The source code is written by NTKhang, please don't change the author's name everywhere. Thank you for using
  * ! Official source code: https://github.com/ntkhang03/Goat-Bot-V2
  * ! If you do not download the source code from the above address, you are using an unknown version and at risk of having your account hacked
- * 
+ *
  * English:
  * ! Please do not change the below code, it is very important for the project.
  * It is my motivation to maintain and develop the project for free.
  * ! If you change it, you will be banned forever
  * Thank you for using
- * 
+ *
  * Vietnamese:
  * ! Vui lòng không thay đổi mã bên dưới, nó rất quan trọng đối với dự án.
  * Nó là động lực để tôi duy trì và phát triển dự án miễn phí.
  * ! Nếu thay đổi nó, bạn sẽ bị cấm vĩnh viễn
- * Cảm ơn bạn đã sử dụng 
- */
+ * Cảm ơn bạn đã sử dụng */ 
+
+// Fix Node 16 pour ytdl-core Facebook - Ajouté avec autorisation
+const { File, Blob } = require('buffer')
+global.File = File
+global.Blob = Blob
 
 const { spawn } = require("child_process");
 const log = require("./logger/log.js");
@@ -38,8 +41,8 @@ setInterval(() => {
 function startProject() {
   const child = spawn("node", ["Goat.js"], { 
     cwd: __dirname, 
-    stdio: "inherit", 
-    shell: true 
+    stdio: "inherit"
+    // shell: true enlevé car bug sur Railway Linux
   });
   
   child.on("close", (code) => {
@@ -50,5 +53,4 @@ function startProject() {
     }
   });
 }
-
 startProject();
