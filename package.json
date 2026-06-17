@@ -1,147 +1,24 @@
-/** * @author NTKhang
- *! The source code is written by NTKhang, please don't change the author's name everywhere. Thank you for using
- *! Official source code: https://github.com/ntkhang03/Goat-Bot-V2
- *! If you do not download the source code from the above address, you are using an unknown version and at risk of having your account hacked
- *
- * English:
- *! Please do not change the below code, it is very important for the project.
- * It is my motivation to maintain and develop the project for free.
- *! If you change it, you will be banned forever
- * Thank you for using
- *
- * Vietnamese:
- *! Vui lòng không thay đổi mã bên dưới, nó rất quan trọng đối với dự án.
- * Nó là động lực để tôi duy trì và phát triển dự án miễn phí.
- *! Nếu thay đổi nó, bạn sẽ bị cấm vĩnh viễn
- * Cảm ơn bạn đã sử dụng */
-
-// Fix Node 18 pour ytdl-core Facebook + FCA
-const { File, Blob } = require('buffer')
-global.File = File
-global.Blob = Blob
-
-const express = require('express');
-const path = require('path');
-const { spawn } = require("child_process");
-const fs = require("fs");
-const http = require("http");
-const WebSocket = require("ws");
-const log = require("./logger/log.js");
-
-const app = express();
-const server = http.createServer(app);
-const port = process.env.PORT || 3000;
-
-// Keep-Alive pour Railway - répond "alive" même si bot crash
-http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('GoatBot is alive - Status: OK');
-}).listen(port, () => {
-  console.log(`📡 Web server running on port ${port}`);
-});
-
-// Ensure log storage
-if (!fs.existsSync("./cache")) fs.mkdirSync("./cache");
-const logPath = path.join(__dirname, "cache", "logs.txt");
-fs.writeFileSync(logPath, "", { flag: "a" });
-const logStream = fs.createWriteStream(logPath, { flags: "a" });
-
-let clients = [];
-const originalLog = console.log;
-console.log = (...args) => {
-  const logMsg = args.map(arg => (typeof arg === "object"? JSON.stringify(arg) : String(arg))).join(" ");
-  originalLog(logMsg);
-  logStream.write(logMsg + "\n");
-  clients.forEach(ws => ws.readyState === 1 && ws.send(logMsg));
-};
-
-// WebSocket for live logs
-const wss = new WebSocket.Server({ server });
-wss.on("connection", ws => {
-  clients.push(ws);
-  ws.send("[Connected] ✅ King log viewer active");
-  ws.on("close", () => {
-    clients = clients.filter(c => c!== ws);
-  });
-});
-
-// Route: /logs viewer
-app.get("/logs", (req, res) => {
-  res.send(`
-<html>
-<head>
-<title>King Logs</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-body { font-family: monospace; background: #000; color: #0f0; padding: 10px; margin: 0; }
-#log { height: 85vh; overflow-y: scroll; white-space: pre-wrap; border: 1px solid #444; padding: 10px; background: #111; }
-.error { color: #ff5555; }
-.success { color: #50fa7b; }
-h2 { margin-top: 0; }
-</style>
-</head>
-<body>
-<h2>📜 King Logs Realtime</h2>
-<div id="log">Loading...</div>
-<script>
-const log = document.getElementById("log");
-fetch("/logs.txt").then(r => r.text()).then(t => { log.innerHTML = colorize(t); log.scrollTop = log.scrollHeight; });
-const ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host);
-ws.onmessage = e => { log.innerHTML += "<br>" + colorize(e.data); log.scrollTop = log.scrollHeight; };
-function colorize(text) {
-  return text.replace(/\\n/g, "<br>")
-    .replace(/\\[.*?ERROR.*?\\]/gi, match => \`<span class="error">\${match}</span>\`)
-    .replace(/\\[.*?success.*?\\]/gi, match => \`<span class="success">\${match}</span>\`);
+{
+  "name": "goat-bot-v2",
+  "version": "1.5.35",
+  "description": "King Bot V2 Messenger",
+  "main": "index.js",
+  "engines": {
+    "node": "18.x"
+  },
+  "dependencies": {
+    "@neoaz07/nkxfca": "github:ntkhang03/nkxfca#main",
+    "@distube/ytdl-core": "^4.13.3",
+    "axios": "^1.4.0",
+    "ws": "^8.13.0",
+    "express": "^4.18.1",
+    "fs-extra": "^11.1.0",
+    "moment-timezone": "^0.5.34",
+    "mqtt": "^4.3.7",
+    "node-cron": "^3.0.2"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "license": "MIT"
 }
-</script>
-</body>
-</html>
-`);
-});
-
-app.use("/logs.txt", express.static(logPath));
-
-// Start Goat.js avec debug complet
-function startProject() {
-  console.log("[DEBUG] === KING BOT STARTING ===");
-  console.log("[DEBUG] Node version:", process.version);
-  console.log("[DEBUG] Platform:", process.platform);
-  console.log("[DEBUG] CWD:", __dirname);
-  console.log("[DEBUG] Goat.js exists:", fs.existsSync(path.join(__dirname, "Goat.js")));
-
-  const child = spawn("node", ["Goat.js"], {
-    cwd: __dirname,
-    stdio: ['inherit', 'pipe', 'pipe'],
-    env: process.env
-  });
-
-  child.stdout.on("data", (data) => {
-    const msg = data.toString().trim();
-    if (msg) console.log("[King]", msg);
-  });
-
-  child.stderr.on("data", (data) => {
-    const err = data.toString().trim();
-    if (err) console.log("[King ERROR]", err);
-  });
-
-  child.on("close", (code, signal) => {
-    console.log(`[Goat.js] Exited with code ${code}, signal ${signal}`);
-    if (code !== 0 && code !== null) {
-      console.log("🔄 Restarting King in 5 seconds...");
-      setTimeout(startProject, 5000);
-    }
-  });
-
-  child.on("error", (err) => {
-    console.log("[FATAL] Failed to start Goat.js:", err.message);
-    console.log("🔄 Retrying in 5 seconds...");
-    setTimeout(startProject, 5000);
-  });
-}
-
-// Delay 2s pour laisser le serveur web démarrer avant Goat.js
-setTimeout(() => {
-  console.log("[DEBUG] Starting Goat.js process...");
-  startProject();
-}, 2000);
